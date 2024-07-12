@@ -1,6 +1,10 @@
 import requests
 from requests.auth import HTTPBasicAuth
-import json
+import pymongo
+from pymongo import MongoClient
+import random
+from datetime import datetime, timedelta
+from pymongo import InsertOne
 
 # Replace these with your actual username and password
 username = 'Thang_XpOfq'
@@ -9,12 +13,28 @@ password = 'Winkbaifree_1908'
 # The URL you want to send the request to
 url = 'https://realtime.oxylabs.io/v1/queries'
 
-# The request body
-output_file = 'jewelry_for_women.json'
+# MongoDB connection details
+mongo_uri = 'mongodb://localhost:27017/'  # Update this with your MongoDB URI if necessary
+db_name = 'amazon_analyzed'
+collection_name = 'jewelry_for_women'
 
-# Open the output file in write mode initially to create the file and write the opening bracket for JSON array
-with open(output_file, 'w') as file:
-    file.write('[\n')
+
+# Connect to MongoDB
+client = MongoClient(mongo_uri)
+db = client[db_name]
+collection = db[collection_name]
+
+db1 = client['amazon_analyzed']  # Replace with your database name
+collection1 = db1['laptop']  # Replace with your collection name
+
+start_date = datetime(2024, 5, 1)
+end_date = datetime.now()
+
+def random_date(start, end):
+    delta = end - start
+    int_delta = int(delta.total_seconds())
+    random_second = random.randint(0, int_delta)
+    return start + timedelta(seconds=random_second)
 
 # Loop through 100 iterations to get 1000 pages (10 pages per iteration)
 for i in range(100):
@@ -41,17 +61,26 @@ for i in range(100):
         results = response_json.get('results', None)
         
         if results is not None:
-            # Open the output file in append mode and write each result individually
-            with open(output_file, 'a') as file:
-                for result in results:
-                    json.dump(result, file, indent=4)
-                    file.write(',\n')
+            # Insert each result into MongoDB
+            for record in results:
+                if "content" in record and "results" in record["content"]:
+                    results = record["content"]["results"]
+                    if isinstance(results, dict):
+                        organics = results["organic"]
+                        amazon_choices = results["amazons_choices"]
+
+                        for organic in organics:
+                            organic["timestamp"] = random_date(start_date, end_date)
+                            collection1.insert_one(organic)
+
+                        for amazon_choice in amazon_choices:
+                            amazon_choice["timestamp"] = random_date(start_date, end_date)
+                            collection1.insert_one(amazon_choice)
+            print(f'Inserted {len(results)} documents for iteration {i+1}.')
         else:
             print(f'No "results" field found in the response for iteration {i+1}.')
     else:
         print(f'Request failed with status code: {response.status_code} for iteration {i+1}.')
 
-# Write the closing bracket for the JSON array
-with open(output_file, 'a') as file:
-    file.write('\n]')
-    
+# Close the MongoDB connection
+client.close()

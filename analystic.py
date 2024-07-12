@@ -35,6 +35,7 @@ cors = CORS(app, resources={
     r"/forgot-password": {"origins": "http://localhost:5173"},
     r"/get-overview": {"origins": "http://localhost:5173"},
     r"/verify-otp": {"origins": "http://localhost:5173"},
+    r"/get-sale-change": {"origins": "http://localhost:5173"},
 })
 
 CLIENT_SECRET_FILE = 'credentials.json'
@@ -272,6 +273,18 @@ def verify_otp():
         'username': user["username"],
         'role': user["role"]
     }), 200
+
+
+@app.route('/get-sale-change', methods=['GET'])
+def get_sale_change():
+    query = {
+        'timestamp': datetime(2024, 7, 12),
+    }
+    result0 = mongo_client["dashboard_01"]["controller"].find(query)
+    query = {
+        'timestamp': datetime(2024, 7, 11),
+    }
+    result1 = mongo_client["dashboard_01"]["controller"].find(query)
 
 
 @app.route('/get-overview', methods=['GET'])
